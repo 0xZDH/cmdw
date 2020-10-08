@@ -4,7 +4,7 @@
 # start/stop times of command executions. This can also
 # act as a template for custom command logging.
 #
-# VERSION: v0.1.0
+# VERSION: v0.1.1
 #
 # Installation:
 # 1. Write this script to your home folder as `.cmdw`:
@@ -111,8 +111,7 @@ cmdw_history() {
 __cmdw_trim_whitespace() {
     local var=${1:?}
     local text=${2:-}
-    text="$(echo -e "${text}" | sed -e 's/^[[:space:]]*//')"
-    text="$(echo -e "${text}" | sed -e 's/[[:space:]]*$//')"
+    text="$(echo -e "${text}" | sed -e 's/^[[:space:]]*// ; s/[[:space:]]*$//')"
     printf -v "$var" '%s' "$text"
 }
 
@@ -197,8 +196,7 @@ __cmdw_precmd() {
     # Collect last command from history.
     __cmdw_command=$(
         export LC_ALL=C
-        HISTTIMEFORMAT= builtin history $__hist_len | \
-        sed '1 s/^ *[0-9][0-9]*[* ] //'
+        HISTTIMEFORMAT= builtin history $__hist_len | sed '1 s/^ *[0-9][0-9]*[* ] //'
     )
 
     # Ensure scenarios like tab-completions don't keep trailing
@@ -236,7 +234,7 @@ __cmdw_precmd() {
     # location. This is to aviod storing too many lines in memory
     # when trying to truncate the log data. First, write the last
     # N lines of the log file to a temp location.
-    local __cmdw_history_file_bak="/tmp/$( basename "$__cmdw_history_file").tmp"
+    local __cmdw_history_file_bak="/tmp/$(basename "$__cmdw_history_file").tmp"
     tail -"$CMDWSIZE" "$__cmdw_history_file" > "$__cmdw_history_file_bak"
     # Next, move the temp file to overwrite the existing log
     # file.
