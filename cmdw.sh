@@ -17,7 +17,7 @@
 # History size:
 # If required, the user can modify the size of the
 # maintained history file by setting CMDWSIZE as an
-# environment variable (Default: 3,000):
+# environment variable (Default: 10,000):
 #    export CMDWSIZE=1000
 #
 # Command referencing:
@@ -72,9 +72,9 @@ __cmdw_imported='defined'
 
 # Generate a log file, similar to .bash_history, but with
 # timestamps. Allow the user to specify a custom CMDWSIZE
-# via exporting, or use a default value of 3,000 lines.
+# via exporting, or use a default value of 10,000 lines.
 __cmdw_history_file="$HOME/.cmdw_history"
-CMDWSIZE="${CMDWSIZE:-3000}"
+CMDWSIZE="${CMDWSIZE:-10000}"
 
 # Ignore list for the cmdw wrapper to avoid logging and
 # performing actions on. The user can expand this list
