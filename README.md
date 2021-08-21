@@ -23,6 +23,12 @@ stop     Wed 07 Oct 2020 05:00:00 AM UTC
 
 Install one-liner: `source <(curl -s https://raw.githubusercontent.com/0xZDH/cmdw/master/install.sh)`
 
+### All Users
+
+The `install-all.sh` script will install and setup cmdw for all users on the system.
+
+One-liner: `source <(curl -s https://raw.githubusercontent.com/0xZDH/cmdw/master/install-all.sh)`
+
 ## History Size:
 If required, the user can modify the size of the maintained history file by setting CMDWSIZE as an environment variable (Default: 10,000):
 * `export CMDWSIZE=1000`
