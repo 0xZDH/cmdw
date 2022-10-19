@@ -78,3 +78,17 @@ Commands to be ignored by cmdw are stored in the `CMDW_IGNORE` environment varia
 
 And to allow the cmdw wrapper to log on every command:
 * `CMDW_IGNORE=()`
+
+## Timezone Handling:
+
+> Contributed by: [Mr.V](https://github.com/ring0lab)
+
+By default, cmdw is set to display timestamps in UTC format. To update the timezone, use the built in function:
+* `cmdw_timezone`
+* `cmdw_timezone <timezone>`
+
+Or export the following variable to set the timezone:
+* `export CMDW_TIMEZONE=<timezone>`
+
+To default the wrapper timezone, add the following to your .bashrc or similar after cmdw is sourced:
+* `export CMDW_TIMEZONE=<timezone>`
