@@ -4,7 +4,7 @@
 # start/stop times of command executions. This can also
 # act as a template for custom command logging.
 #
-# VERSION: v0.1.1
+# VERSION: v0.1.2
 #
 # Installation:
 # 1. Write this script to your home folder as `.cmdw`:
@@ -54,6 +54,17 @@
 #    CMDW_IGNORE+=('command')
 # And to allow the cmdw wrapper to log on every command:
 #    CMDW_IGNORE=()
+#
+# Timezone handling:
+# By default, cmdw is set to display timestamps in UTC
+# format. To update the timezone, use the built in function:
+#   cmdw_timezone
+#   cmdw_timezone <timezone>
+# Or export the following variable to set the timezone:
+#    export CMDW_TIMEZONE=<timezone>
+# To default the wrapper timezone, add the following to
+# your .bashrc or similar after cmdw is sourced:
+#    export CMDW_TIMEZONE=<timezone>
 #######################################
 
 # Validate the current terminal is Bash or Zsh.
@@ -82,8 +93,11 @@ CMDWSIZE="${CMDWSIZE:-10000}"
 # sourced, `CMDW_IGNORE+=('command')`. The user can also
 # extend the ignore list per session by adding to the
 # list within a terminal session with the same command.
-CMDW_IGNORE=( 'clear' 'cmdw_enable' 'cmdw_disable' 'cmdw_history'
-              'cmdw_history +[0-9]{1,}' )
+CMDW_IGNORE=( 'clear' 'cmdw_enable' 'cmdw_disable' 'cmdw_history' 'cmdw_timezone'
+              'cmdw_history +[0-9]{1,}' 'cmdw_timezone +.{1,}' )
+
+# Set the timezone to UTC by default.
+CMDW_TIMEZONE="UTC"
 
 # Enable the wrapper by default.
 CMDW_ENABLE=1
@@ -100,6 +114,18 @@ cmdw_history() {
     else
         grep -n '^#' "$HOME/.cmdw_history" | \
         sed -E 's/^([0-9]{1,}):# ?(.*)$/ \1   \2/'
+    fi
+}
+
+# Get the current timezone used by cmdw or specify a timezone
+# to use by passing in the value of a timezone name as an argument
+# to this function.
+cmdw_timezone() {
+    local __cmdw_tz=${1:-}
+    if [ -z "${__cmdw_tz}" ]; then
+        echo "${CMDW_TIMEZONE}"
+    else 
+        export CMDW_TIMEZONE="${__cmdw_tz}"
     fi
 }
 
@@ -132,6 +158,14 @@ __cmdw_check_array() {
     return 1
 }
 
+# Get the current time using date -u, but allow for specified
+# timezones - instead of setting TZ at the system level, set
+# per `date` call as to not affect the system time.
+__cmdw_get_time() {
+    local __date="$(TZ="${CMDW_TIMEZONE}" date +"%a %b %d %Y %r %Z")"
+    echo "${__date}"
+}
+
 # Set __cmdw_login to avoid execution of this wrapper on
 # login.
 __cmdw_login=1
@@ -158,7 +192,7 @@ __cmdw_preexec() {
     unset __cmdw_preexec_enable
 
     # Grab the start timestamp pre-execution.
-    __cmdw_start_date="$(date -u)"
+    __cmdw_start_date="$(__cmdw_get_time)"
 }
 
 # Perform post-command execution handling to collect the
@@ -180,7 +214,7 @@ __cmdw_precmd() {
     [[ -z "${CMDW_ENABLE:-}" || "$CMDW_ENABLE" -ne 1 ]] && return 0
 
     # Grab the stop timestamp post-execution.
-    __cmdw_stop_date="$(date -u)"
+    __cmdw_stop_date="$(__cmdw_get_time)"
 
     # Logging & Output
 
