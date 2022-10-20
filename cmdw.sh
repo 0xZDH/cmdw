@@ -4,7 +4,7 @@
 # start/stop times of command executions. This can also
 # act as a template for custom command logging.
 #
-# VERSION: v0.1.4
+# VERSION: v0.1.5
 #
 # Installation:
 # 1. Write this script to your home folder as `.cmdw`:
@@ -93,7 +93,8 @@ CMDWHISTSIZE="${CMDWHISTSIZE:-10000}"
 # sourced, `CMDW_IGNORE+=('command')`. The user can also
 # extend the ignore list per session by adding to the
 # list within a terminal session with the same command.
-CMDW_IGNORE=( 'clear' 'cmdw_enable' 'cmdw_disable' 'cmdw_history' 'cmdw_timezone'
+CMDW_IGNORE=( 'clear' 'cmdw_enable' 'cmdw_disable' 'cmdw_history'
+              'cmdw_timezone' 'cmdw_version'
               'cmdw_history +[0-9]{1,}' 'cmdw_timezone +.{1,}' )
 
 # Set the timezone to UTC by default.
@@ -101,6 +102,10 @@ CMDW_TIMEZONE="UTC"
 
 # Enable the wrapper by default.
 CMDW_ENABLE=1
+
+# Display current cmdw version.
+__cmdw_version="0.1.5"
+cmdw_version() { echo "cmdw ${__cmdw_version}"; }
 
 # Enable/Disable functions for easy toggling.
 cmdw_enable() { export CMDW_ENABLE=1; }
