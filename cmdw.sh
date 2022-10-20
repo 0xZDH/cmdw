@@ -4,7 +4,7 @@
 # start/stop times of command executions. This can also
 # act as a template for custom command logging.
 #
-# VERSION: v0.1.3
+# VERSION: v0.1.4
 #
 # Installation:
 # 1. Write this script to your home folder as `.cmdw`:
@@ -16,9 +16,9 @@
 #
 # History size:
 # If required, the user can modify the size of the
-# maintained history file by setting CMDWSIZE as an
-# environment variable (Default: 10,000):
-#    export CMDWSIZE=1000
+# maintained history file by setting CMDWHISTSIZE
+# as an environment variable (Default: 10,000):
+#    export CMDWHISTSIZE=1000
 #
 # Command referencing:
 # 1. List the executed commands in .cmdw_history with
@@ -82,10 +82,10 @@ __cmdw_imported='defined'
 # >----- START CMDW HANDLING -----< #
 
 # Generate a log file, similar to .bash_history, but with
-# timestamps. Allow the user to specify a custom CMDWSIZE
+# timestamps. Allow the user to specify a custom CMDWHISTSIZE
 # via exporting, or use a default value of 10,000 lines.
 __cmdw_history_file="$HOME/.cmdw_history"
-CMDWSIZE="${CMDWSIZE:-10000}"
+CMDWHISTSIZE="${CMDWHISTSIZE:-10000}"
 
 # Ignore list for the cmdw wrapper to avoid logging and
 # performing actions on. The user can expand this list
@@ -110,10 +110,15 @@ cmdw_disable() { export CMDW_ENABLE=0; }
 cmdw_history() {
     local __cmdw_id=$1
     if [ -n "$__cmdw_id" ]; then
-        sed -n ''"$__cmdw_id"',$p' "$HOME/.cmdw_history" | head -n3
+        # The history file itself includes 3 lines per entry, but
+        # it is shown to the user numbered with increments of 1.
+        # When a user provides a command id, calculate the correct
+        # offset.
+        local __cmdw_id_tmp=$(($__cmdw_id * 3 - 2))
+        sed -n ''"${__cmdw_id_tmp}"',$p' "$HOME/.cmdw_history" | head -n3
     else
-        grep -n '^#' "$HOME/.cmdw_history" | \
-        sed -E 's/^([0-9]{1,}):# ?(.*)$/ \1   \2/'
+        grep '^#' "$HOME/.cmdw_history" | \
+        awk '{print NR  "   " $s}'
     fi
 }
 
@@ -269,7 +274,7 @@ __cmdw_precmd() {
     # when trying to truncate the log data. First, write the last
     # N lines of the log file to a temp location.
     local __cmdw_history_file_bak="/tmp/$(basename "$__cmdw_history_file").tmp"
-    tail -"$CMDWSIZE" "$__cmdw_history_file" > "$__cmdw_history_file_bak"
+    tail -"$CMDWHISTSIZE" "$__cmdw_history_file" > "$__cmdw_history_file_bak"
     # Next, move the temp file to overwrite the existing log
     # file.
     mv "$__cmdw_history_file_bak" "$__cmdw_history_file"

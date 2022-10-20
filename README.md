@@ -30,11 +30,11 @@ The `install-all.sh` script will install and setup cmdw for all users on the sys
 One-liner: `source <(curl -s https://raw.githubusercontent.com/0xZDH/cmdw/master/install-all.sh)`
 
 ## History Size:
-If required, the user can modify the size of the maintained history file by setting CMDWSIZE as an environment variable (Default: 10,000):
-* `export CMDWSIZE=1000`
+If required, the user can modify the size of the maintained history file by setting CMDWHISTSIZE as an environment variable (Default: 10,000):
+* `export CMDWHISTSIZE=1000`
 
-For uses that require larger history files, it is best to include and set the CMDWSIZE variable in the terminals rc file prior to the sourcing of the cmdw tool. For example, add the following to your rc file above the cmdw source line to allow the history file length to grow up to 1,000,000 lines:
-* `export CMDWSIZE=1000000`
+For uses that require larger history files, it is best to include and set the CMDWHISTSIZE variable in the terminals rc file prior to the sourcing of the cmdw tool. For example, add the following to your rc file above the cmdw source line to allow the history file length to grow up to 1,000,000 lines:
+* `export CMDWHISTSIZE=1000000`
 
 ## Command Referencing:
 1. List the executed commands in .cmdw_history with line numbers via:
