@@ -4,7 +4,7 @@
 # start/stop times of command executions. This can also
 # act as a template for custom command logging.
 #
-# VERSION: v0.1.2
+# VERSION: v0.1.3
 #
 # Installation:
 # 1. Write this script to your home folder as `.cmdw`:
@@ -315,13 +315,18 @@ __install_bash_preexec () {
 # Author: Ryan Caloras (ryan@bashhub.com)
 # Forked from Original Author: Glyph Lefkowitz
 #
-# V0.4.1
+# V0.5.0
 
 # Avoid duplicate inclusion
-if [[ "${__bp_imported:-}" == "defined" ]]; then
+if [[ -n "${bash_preexec_imported:-}" ]]; then
     return 0
 fi
-__bp_imported="defined"
+bash_preexec_imported="defined"
+
+# WARNING: This variable is no longer used and should not be relied upon.
+# Use ${bash_preexec_imported} instead.
+# shellcheck disable=SC2034
+__bp_imported="${bash_preexec_imported}"
 
 # Should be available to each precmd and preexec
 # functions, should they want it. $? and $_ are available as $? and $_, but
@@ -355,7 +360,8 @@ __bp_require_not_readonly() {
 # history even if it starts with a space.
 __bp_adjust_histcontrol() {
     local histcontrol
-    histcontrol="${HISTCONTROL//ignorespace}"
+    histcontrol="${HISTCONTROL:-}"
+    histcontrol="${histcontrol//ignorespace}"
     # Replace ignoreboth with ignoredups
     if [[ "$histcontrol" == *"ignoreboth"* ]]; then
         histcontrol="ignoredups:${histcontrol//ignoreboth}"
@@ -369,6 +375,10 @@ __bp_adjust_histcontrol() {
 # run interactively by the user; it's set immediately after the prompt hook,
 # and unset as soon as the trace hook is run.
 __bp_preexec_interactive_mode=""
+
+# These arrays are used to add functions to be run before, or after, prompts.
+declare -a precmd_functions
+declare -a preexec_functions
 
 # Trims leading and trailing whitespace from $2 and writes it to the variable
 # name passed as $1
@@ -405,6 +415,9 @@ __bp_interactive_mode() {
 __bp_precmd_invoke_cmd() {
     # Save the returned value from our last command, and from each process in
     # its pipeline. Note: this MUST be the first thing done in this function.
+    # BP_PIPESTATUS may be unused, ignore
+    # shellcheck disable=SC2034
+
     __bp_last_ret_value="$?" BP_PIPESTATUS=("${PIPESTATUS[@]}")
 
     # Don't invoke precmds if we are inside an execution of an "original
@@ -427,19 +440,21 @@ __bp_precmd_invoke_cmd() {
             "$precmd_function"
         fi
     done
+
+    __bp_set_ret_value "$__bp_last_ret_value"
 }
 
 # Sets a return value in $?. We may want to get access to the $? variable in our
 # precmd functions. This is available for instance in zsh. We can simulate it in bash
 # by setting the value here.
 __bp_set_ret_value() {
-    return ${1:-}
+    return ${1:+"$1"}
 }
 
 __bp_in_prompt_command() {
 
     local prompt_command_array
-    IFS=$'\n;' read -rd '' -a prompt_command_array <<< "$PROMPT_COMMAND"
+    IFS=$'\n;' read -rd '' -a prompt_command_array <<< "${PROMPT_COMMAND:-}"
 
     local trimmed_arg
     __bp_trim_whitespace trimmed_arg "${1:-}"
@@ -507,7 +522,7 @@ __bp_preexec_invoke_exec() {
     local this_command
     this_command=$(
         export LC_ALL=C
-        HISTTIMEFORMAT= builtin history 1 | sed '1 s/^ *[0-9][0-9]*[* ] //'
+        HISTTIMEFORMAT='' builtin history 1 | sed '1 s/^ *[0-9][0-9]*[* ] //'
     )
 
     # Sanity check to make sure we have something to invoke our function with.
@@ -524,7 +539,7 @@ __bp_preexec_invoke_exec() {
         # Only execute each function if it actually exists.
         # Test existence of function with: declare -[fF]
         if type -t "$preexec_function" 1>/dev/null; then
-            __bp_set_ret_value ${__bp_last_ret_value:-}
+            __bp_set_ret_value "${__bp_last_ret_value:-}"
             # Quote our function invocation to prevent issues with IFS
             "$preexec_function" "$this_command"
             preexec_function_ret_value="$?"
@@ -552,7 +567,10 @@ __bp_install() {
     trap '__bp_preexec_invoke_exec "$_"' DEBUG
 
     # Preserve any prior DEBUG trap as a preexec function
-    local prior_trap=$(sed "s/[^']*'\(.*\)'[^']*/\1/" <<<"${__bp_trap_string:-}")
+    local prior_trap
+    # we can't easily do this with variable expansion. Leaving as sed command.
+    # shellcheck disable=SC2001
+    prior_trap=$(sed "s/[^']*'\(.*\)'[^']*/\1/" <<<"${__bp_trap_string:-}")
     unset __bp_trap_string
     if [[ -n "$prior_trap" ]]; then
         eval '__bp_original_debug_trap() {
@@ -577,7 +595,8 @@ __bp_install() {
 
     local existing_prompt_command
     # Remove setting our trap install string and sanitize the existing prompt command string
-    existing_prompt_command="${PROMPT_COMMAND//$__bp_install_string[;$'\n']}" # Edge case of appending to PROMPT_COMMAND
+    existing_prompt_command="${PROMPT_COMMAND:-}"
+    existing_prompt_command="${existing_prompt_command//${__bp_install_string}[;$'\n']}" # Edge case of appending to PROMPT_COMMAND
     existing_prompt_command="${existing_prompt_command//$__bp_install_string}"
     __bp_sanitize_string existing_prompt_command "$existing_prompt_command"
 
@@ -603,17 +622,12 @@ __bp_install() {
 # after our session has started. This allows bash-preexec to be included
 # at any point in our bash profile.
 __bp_install_after_session_init() {
-    # Make sure this is bash that's running this and return otherwise.
-    if [[ -z "${BASH_VERSION:-}" ]]; then
-        return 1;
-    fi
-
     # bash-preexec needs to modify these variables in order to work correctly
     # if it can't, just stop the installation
     __bp_require_not_readonly PROMPT_COMMAND HISTCONTROL HISTTIMEFORMAT || return
 
     local sanitized_prompt_command
-    __bp_sanitize_string sanitized_prompt_command "$PROMPT_COMMAND"
+    __bp_sanitize_string sanitized_prompt_command "${PROMPT_COMMAND:-}"
     if [[ -n "$sanitized_prompt_command" ]]; then
         PROMPT_COMMAND=${sanitized_prompt_command}$'\n'
     fi;
@@ -632,22 +646,30 @@ fi;
 
 # When in a bash shell, install bash-preexec for better
 # handling.
-if [ -n "$BASH_VERSION" ]; then
-    # First, we want to enable `cmdhist` to allow command
-    # history to be collapsed for easier parsing.
-    shopt -s cmdhist > /dev/null 2>&1
+if [ -n "${BASH_VERSION:-}" ]; then
+    # bash-preexec only supports bash 3.1+
+    # BASH_VERSINFO is available starting is bash 2.0
+    #   Check if BASH_VERSINFO set AND
+    #    Check if major version is larger than 3 OR
+    #    Check if major version is equal to 3 and minor version is
+    #      greater than or equal to 1
+    if [[ -n "${BASH_VERSINFO-}" && ( "${BASH_VERSINFO[0]}" -gt 3 || ( "${BASH_VERSINFO[0]}" -eq 3 && "${BASH_VERSINFO[1]}" -ge 1 ) ) ]]; then
+        # First, we want to enable `cmdhist` to allow command
+        # history to be collapsed for easier parsing.
+        shopt -s cmdhist > /dev/null 2>&1
 
-    __install_bash_preexec
-    if [[ "$PROMPT_COMMAND" == *'__bp_trap_string'* ]]; then
-        # Because bash-preexec is being invoked within the context
-        # of this script, we must manually trigger the install
-        # instead of relying on PROMPT_COMMAND to trigger it.
-        __bp_trap_string="$(trap -p DEBUG)"
-        trap - DEBUG
-        __bp_install
-        unset -f __bp_install
+        __install_bash_preexec
+        if [[ "$PROMPT_COMMAND" == *'__bp_trap_string'* ]]; then
+            # Because bash-preexec is being invoked within the context
+            # of this script, we must manually trigger the install
+            # instead of relying on PROMPT_COMMAND to trigger it.
+            __bp_trap_string="$(trap -p DEBUG)"
+            trap - DEBUG
+            __bp_install
+            unset -f __bp_install
+        fi
+        unset -f __install_bash_preexec
     fi
-    unset -f __install_bash_preexec
 fi
 
 # If bash-preexec has been installed or we are running in
